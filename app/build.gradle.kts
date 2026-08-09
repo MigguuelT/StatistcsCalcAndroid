@@ -12,8 +12,9 @@ android {
         applicationId = "com.miguel.statscalculator"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // --- CONTROLE DE VERSÃO AQUI ---
+        versionCode = 1        // Incremente para 2, 3, 4 a cada atualização
+        versionName = "1.0.0"  // Versão exibida na Google Play / Usuário
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
