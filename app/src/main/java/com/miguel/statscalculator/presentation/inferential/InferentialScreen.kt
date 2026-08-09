@@ -1,26 +1,23 @@
 package com.miguel.statscalculator.presentation.inferential
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-
 import com.miguel.statscalculator.ui.components.KpiHeroCard
+import com.miguel.statscalculator.util.AlternativeHypothesis
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,14 +26,14 @@ fun InferentialScreen(
     onNavigateBack: () -> Unit,
     viewModel: InferentialViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Inferência & Hipóteses",
+                        text = "Inferência Estatística",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 },
@@ -54,321 +51,334 @@ fun InferentialScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 20.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // TABS DE NAVEGAÇÃO
             TabRow(
-                selectedTabIndex = uiState.selectedTab.ordinal,
+                selectedTabIndex = state.mainTab,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 Tab(
-                    selected = uiState.selectedTab == InferentialTab.CONFIDENCE_INTERVAL,
-                    onClick = { viewModel.selectTab(InferentialTab.CONFIDENCE_INTERVAL) },
-                    text = { Text("IC Média", fontWeight = FontWeight.Bold) }
+                    selected = state.mainTab == 0,
+                    onClick = { viewModel.onMainTabSelected(0) },
+                    text = { Text("Intervalo de Confiança", fontWeight = FontWeight.Bold) }
                 )
                 Tab(
-                    selected = uiState.selectedTab == InferentialTab.HYPOTHESIS_TEST,
-                    onClick = { viewModel.selectTab(InferentialTab.HYPOTHESIS_TEST) },
-                    text = { Text("Teste t / Z", fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = uiState.selectedTab == InferentialTab.ANOVA,
-                    onClick = { viewModel.selectTab(InferentialTab.ANOVA) },
-                    text = { Text("ANOVA", fontWeight = FontWeight.Bold) }
+                    selected = state.mainTab == 1,
+                    onClick = { viewModel.onMainTabSelected(1) },
+                    text = { Text("Teste de Hipóteses", fontWeight = FontWeight.Bold) }
                 )
             }
 
-            uiState.errorMessage?.let { error ->
-                Text(text = error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-            }
-
-            when (uiState.selectedTab) {
-                InferentialTab.CONFIDENCE_INTERVAL -> IcSection(uiState, viewModel)
-                InferentialTab.HYPOTHESIS_TEST -> TestSection(uiState, viewModel)
-                InferentialTab.ANOVA -> AnovaSection(uiState, viewModel)
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-// 1. SEÇÃO DE INTERVALO DE CONFIANÇA
-@Composable
-private fun IcSection(uiState: InferentialUiState, viewModel: InferentialViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        OutlinedTextField(
-            value = uiState.icDataText,
-            onValueChange = { viewModel.onIcDataChanged(it) },
-            label = { Text("Dados da Amostra") },
-            placeholder = { Text("100, 102, 98, 105") },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        OutlinedTextField(
-            value = uiState.icConfidenceLevelText,
-            onValueChange = { viewModel.onIcLevelChanged(it) },
-            label = { Text("Nível de Confiança (1 - α)") },
-            placeholder = { Text("Ex: 0.95 para 95%") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = { viewModel.loadIcExample() },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(imageVector = Icons.Default.DataObject, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Exemplo")
-            }
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
-                onClick = { viewModel.calculateIC() },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Calcular IC", fontWeight = FontWeight.Bold)
-            }
-        }
+                if (state.mainTab == 0) {
+                    ConfidenceIntervalContent(state = state, viewModel = viewModel)
+                } else {
+                    HypothesisTestContent(state = state, viewModel = viewModel)
+                }
 
-        uiState.icResult?.let { res ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                KpiHeroCard(
-                    title = "Limite Inferior",
-                    value = formatNum(res.lowerBound),
-                    subtitle = "IC ${formatNum(res.confidenceLevel * 100)}%",
-                    modifier = Modifier.weight(1f)
-                )
-                KpiHeroCard(
-                    title = "Limite Superior",
-                    value = formatNum(res.upperBound),
-                    subtitle = "IC ${formatNum(res.confidenceLevel * 100)}%",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // --- GRÁFICO DO INTERVALO DE CONFIANÇA ---
-            ConfidenceIntervalCanvas(result = res)
-
-            DetailCard("Métricas do Intervalo de Confiança") {
-                MetricRow("Média Amostral (x̄)", formatNum(res.mean))
-                MetricRow("Margem de Erro (E)", "± ${formatNum(res.marginOfError)}")
-                MetricRow("Valor Crítico (${if (res.isTDistribution) "t" else "z"})", formatNum(res.criticalValue))
-                MetricRow("Desvio Padrão (s)", formatNum(res.stdDev))
-            }
-
-            DetailCard("Métricas do Intervalo de Confiança") {
-                MetricRow("Média Amostral (x̄)", formatNum(res.mean))
-                MetricRow("Margem de Erro (E)", "± ${formatNum(res.marginOfError)}")
-                MetricRow("Valor Crítico (${if (res.isTDistribution) "t" else "z"})", formatNum(res.criticalValue))
-                MetricRow("Desvio Padrão (s)", formatNum(res.stdDev))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
 }
 
-// 2. SEÇÃO DE TESTE DE HIPÓTESES
 @Composable
-private fun TestSection(uiState: InferentialUiState, viewModel: InferentialViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+private fun HypothesisTestContent(
+    state: InferentialState,
+    viewModel: InferentialViewModel
+) {
+    Text(text = "Parâmetro em Teste:", style = MaterialTheme.typography.labelMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+            selected = state.htParamType == InferentialParamType.MEAN,
+            onClick = { viewModel.onHtParamTypeChanged(InferentialParamType.MEAN) },
+            label = { Text("Média (μ)") },
+            modifier = Modifier.weight(1f)
+        )
+        FilterChip(
+            selected = state.htParamType == InferentialParamType.PROPORTION,
+            onClick = { viewModel.onHtParamTypeChanged(InferentialParamType.PROPORTION) },
+            label = { Text("Proporção (p)") },
+            modifier = Modifier.weight(1f)
+        )
+    }
+
+    Text(text = "Hipótese Alternativa (Hₐ):", style = MaterialTheme.typography.labelMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FilterChip(
+            selected = state.htAlternative == AlternativeHypothesis.TWO_SIDED,
+            onClick = { viewModel.onHtAlternativeChanged(AlternativeHypothesis.TWO_SIDED) },
+            label = { Text("≠ (Bilateral)", fontSize = 11.sp) },
+            modifier = Modifier.weight(1f)
+        )
+        FilterChip(
+            selected = state.htAlternative == AlternativeHypothesis.LESS,
+            onClick = { viewModel.onHtAlternativeChanged(AlternativeHypothesis.LESS) },
+            label = { Text("< (Esquerda)", fontSize = 11.sp) },
+            modifier = Modifier.weight(1f)
+        )
+        FilterChip(
+            selected = state.htAlternative == AlternativeHypothesis.GREATER,
+            onClick = { viewModel.onHtAlternativeChanged(AlternativeHypothesis.GREATER) },
+            label = { Text("> (Direita)", fontSize = 11.sp) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
-            value = uiState.testDataText,
-            onValueChange = { viewModel.onTestDataChanged(it) },
-            label = { Text("Dados da Amostra") },
-            placeholder = { Text("Ex: 14.2, 15.1, 13.9") },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp),
+            value = state.htNullValueText,
+            onValueChange = { viewModel.onHtNullValueChange(it) },
+            label = { Text(if (state.htParamType == InferentialParamType.MEAN) "Valor H₀ (μ₀)" else "Valor H₀ (p₀)") },
+            placeholder = { Text(if (state.htParamType == InferentialParamType.MEAN) "ex: 100.0" else "ex: 0.50") },
+            modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(12.dp)
         )
+        OutlinedTextField(
+            value = state.htSampleEstimateText,
+            onValueChange = { viewModel.onHtSampleEstimateChange(it) },
+            label = { Text(if (state.htParamType == InferentialParamType.MEAN) "Média (x̅)" else "Proporção (p̂)") },
+            placeholder = { Text(if (state.htParamType == InferentialParamType.MEAN) "ex: 104.0" else "ex: 0.58") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp)
+        )
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (state.htParamType == InferentialParamType.MEAN) {
+            OutlinedTextField(
+                value = state.htStdDevText,
+                onValueChange = { viewModel.onHtStdDevChange(it) },
+                label = { Text("Desvio Padrão (s)") },
+                placeholder = { Text("ex: 15.0") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+        OutlinedTextField(
+            value = state.htSampleSizeText,
+            onValueChange = { viewModel.onHtSampleSizeChange(it) },
+            label = { Text("Amostra (n)") },
+            placeholder = { Text("ex: 100") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp)
+        )
+        OutlinedTextField(
+            value = state.htAlphaText,
+            onValueChange = { viewModel.onHtAlphaChange(it) },
+            label = { Text("Significância (α)") },
+            placeholder = { Text("ex: 0.05") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp)
+        )
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = { viewModel.loadExample() },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Icon(imageVector = Icons.Default.DataObject, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Exemplo")
+        }
+
+        OutlinedButton(
+            onClick = { viewModel.clear() },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Icon(imageVector = Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Limpar")
+        }
+    }
+
+    Button(
+        onClick = { viewModel.calculateHt() },
+        modifier = Modifier.fillMaxWidth().height(50.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Icon(imageVector = Icons.Default.Calculate, contentDescription = null)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Calcular Teste de Hipóteses", fontWeight = FontWeight.Bold)
+    }
+
+    state.errorMessage?.let {
+        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+    }
+
+    state.htResult?.let { res ->
+        val decisionText = if (res.rejectNull) "Rejeitar H₀" else "Não Rejeitar H₀"
+        val decisionSubtitle = if (res.rejectNull) "Evidência estatística significativa (p < α)" else "Sem evidência suficiente (p ≥ α)"
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            KpiHeroCard(
+                title = "Decisão Final",
+                value = decisionText,
+                subtitle = decisionSubtitle,
+                modifier = Modifier.weight(1.2f)
+            )
+            KpiHeroCard(
+                title = "Valor-p",
+                value = formatNum(res.pValue),
+                subtitle = "α = ${formatNum(res.alpha)}",
+                modifier = Modifier.weight(0.8f)
+            )
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            KpiHeroCard(
+                title = "Escore Z_calc",
+                value = formatNum(res.testStatistic),
+                subtitle = "Estatística do Teste",
+                modifier = Modifier.weight(1f)
+            )
+            KpiHeroCard(
+                title = "Z_crítico",
+                value = formatNum(res.criticalValue),
+                subtitle = "Ponto de Corte (α=${formatNum(res.alpha)})",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        HypothesisTestCanvas(
+            result = res,
+            alternative = state.htAlternative
+        )
+    }
+}
+
+@Composable
+private fun ConfidenceIntervalContent(
+    state: InferentialState,
+    viewModel: InferentialViewModel
+) {
+    Text(text = "Parâmetro a Estimar:", style = MaterialTheme.typography.labelMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+            selected = state.ciParamType == InferentialParamType.MEAN,
+            onClick = { viewModel.onCiParamTypeChanged(InferentialParamType.MEAN) },
+            label = { Text("Média Populacional (μ)") },
+            modifier = Modifier.weight(1f)
+        )
+        FilterChip(
+            selected = state.ciParamType == InferentialParamType.PROPORTION,
+            onClick = { viewModel.onCiParamTypeChanged(InferentialParamType.PROPORTION) },
+            label = { Text("Proporção (p)") },
+            modifier = Modifier.weight(1f)
+        )
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = state.ciEstimateText,
+            onValueChange = { viewModel.onCiEstimateChange(it) },
+            label = { Text(if (state.ciParamType == InferentialParamType.MEAN) "Média Amostral (x̅)" else "Proporção (p̂)") },
+            placeholder = { Text(if (state.ciParamType == InferentialParamType.MEAN) "ex: 100.0" else "ex: 0.45") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp)
+        )
+        if (state.ciParamType == InferentialParamType.MEAN) {
             OutlinedTextField(
-                value = uiState.hypoMeanText,
-                onValueChange = { viewModel.onHypoMeanChanged(it) },
-                label = { Text("Média Nula (μ₀)") },
-                singleLine = true,
+                value = state.ciStdDevText,
+                onValueChange = { viewModel.onCiStdDevChange(it) },
+                label = { Text("Desvio Padrão (s)") },
+                placeholder = { Text("ex: 15.0") },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             )
+        }
+    }
 
-            OutlinedTextField(
-                value = uiState.alphaText,
-                onValueChange = { viewModel.onAlphaChanged(it) },
-                label = { Text("Nível de Sig. (α)") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = state.ciSampleSizeText,
+            onValueChange = { viewModel.onCiSampleSizeChange(it) },
+            label = { Text("Amostra (n)") },
+            placeholder = { Text("ex: 100") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp)
+        )
+        OutlinedTextField(
+            value = state.ciConfidenceLevelText,
+            onValueChange = { viewModel.onCiConfidenceLevelChange(it) },
+            label = { Text("Confiança (%)") },
+            placeholder = { Text("ex: 95") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp)
+        )
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = { viewModel.loadExample() },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Icon(imageVector = Icons.Default.DataObject, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Exemplo")
+        }
+
+        OutlinedButton(
+            onClick = { viewModel.clear() },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Icon(imageVector = Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Limpar")
+        }
+    }
+
+    Button(
+        onClick = { viewModel.calculateCi() },
+        modifier = Modifier.fillMaxWidth().height(50.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Icon(imageVector = Icons.Default.Calculate, contentDescription = null)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Calcular Intervalo de Confiança", fontWeight = FontWeight.Bold)
+    }
+
+    state.errorMessage?.let {
+        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+    }
+
+    state.ciResult?.let { res ->
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            KpiHeroCard(
+                title = "Intervalo Estimado",
+                value = "[${formatNum(res.lowerLimit)} ; ${formatNum(res.upperLimit)}]",
+                subtitle = "IC de ${state.ciConfidenceLevelText}%",
+                modifier = Modifier.weight(1f)
+            )
+            KpiHeroCard(
+                title = "Margem de Erro (E)",
+                value = "± ${formatNum(res.marginOfError)}",
+                subtitle = "Z_critico = ${formatNum(res.criticalValue)}",
+                modifier = Modifier.weight(1f)
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = { viewModel.loadTestExample() },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(imageVector = Icons.Default.DataObject, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Exemplo")
-            }
-
-            Button(
-                onClick = { viewModel.calculateTest() },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Executar Teste", fontWeight = FontWeight.Bold)
-            }
-        }
-
-        uiState.testResult?.let { res ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                KpiHeroCard(
-                    title = if (res.isTTest) "Estatística t" else "Estatística Z",
-                    value = formatNum(res.testStatistic),
-                    modifier = Modifier.weight(1f)
-                )
-                KpiHeroCard(
-                    title = "Valor-p",
-                    value = formatNum(res.pValue),
-                    subtitle = if (res.isSignificant) "Rejeita H0" else "Não Rejeita H0",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            DetailCard("Decisão do Teste de Hipóteses") {
-                MetricRow("Média Amostral Observada", formatNum(res.sampleMean))
-                MetricRow("Média Hipotetizada (μ₀)", formatNum(res.hypoMean))
-                MetricRow("Decisão Estatística", if (res.isSignificant) "Diferença Significativa (p < α)" else "Sem diferença significativa")
-            }
-        }
-    }
-}
-
-// 3. SEÇÃO DE ANOVA ONE-WAY
-@Composable
-private fun AnovaSection(uiState: InferentialUiState, viewModel: InferentialViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        OutlinedTextField(
-            value = uiState.anovaGroup1Text,
-            onValueChange = { viewModel.onAnovaG1Changed(it) },
-            label = { Text("Grupo 1") },
-            placeholder = { Text("85, 88, 90") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+        ConfidenceIntervalCanvas(
+            result = res,
+            pointEstimate = state.ciPointEstimateValue,
+            confidenceLevel = state.ciConfidenceLevelText
         )
-
-        OutlinedTextField(
-            value = uiState.anovaGroup2Text,
-            onValueChange = { viewModel.onAnovaG2Changed(it) },
-            label = { Text("Grupo 2") },
-            placeholder = { Text("78, 80, 84") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        OutlinedTextField(
-            value = uiState.anovaGroup3Text,
-            onValueChange = { viewModel.onAnovaG3Changed(it) },
-            label = { Text("Grupo 3 (Opcional)") },
-            placeholder = { Text("92, 95, 91") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = { viewModel.loadAnovaExample() },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(imageVector = Icons.Default.DataObject, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Exemplo Grupos")
-            }
-
-            Button(
-                onClick = { viewModel.calculateAnova() },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(imageVector = Icons.Default.Analytics, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Calcular ANOVA", fontWeight = FontWeight.Bold)
-            }
-        }
-
-        uiState.anovaResult?.let { res ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                KpiHeroCard(
-                    title = "Estatística F",
-                    value = formatNum(res.fStatistic),
-                    modifier = Modifier.weight(1f)
-                )
-                KpiHeroCard(
-                    title = "Valor-p",
-                    value = formatNum(res.pValue),
-                    subtitle = if (res.isSignificant) "Médias Diferentes" else "Médias Iguais",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            DetailCard("Tabela Resumo ANOVA") {
-                MetricRow("SS Entre Grupos (SS_B)", formatNum(res.ssBetween))
-                MetricRow("SS Dentro dos Grupos (SS_W)", formatNum(res.ssWithin))
-                MetricRow("Soma dos Quadrados Total", formatNum(res.ssTotal))
-                MetricRow("Graus de Liberdade (DF_B / DF_W)", "${res.dfBetween} / ${res.dfWithin}")
-                MetricRow("Média dos Quadrados (MS_B / MS_W)", "${formatNum(res.msBetween)} / ${formatNum(res.msWithin)}")
-            }
-        }
     }
 }
 
-@Composable
-private fun DetailCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
-            .padding(18.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-            content()
-        }
-    }
-}
-
-@Composable
-private fun MetricRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-private fun formatNum(value: Double): String {
-    return String.format(Locale.US, "%.4f", value)
+private fun formatNum(v: Double): String {
+    return String.format(Locale.US, "%.4f", v)
 }

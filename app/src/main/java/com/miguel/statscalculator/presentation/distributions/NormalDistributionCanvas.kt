@@ -24,7 +24,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.exp
 
 enum class NormalProbabilityType {
@@ -98,7 +97,7 @@ fun NormalDistributionCanvas(
             val height = size.height
 
             val paddingTop = 50f     // Espaço superior para o Badge P(...) não encostar na curva
-            val paddingBottom = 65f  // Espaço inferior para organizar SD labels, μ e X sem sobreposição
+            val paddingBottom = 65f  // Espaço inferior para organizar os rótulos em 3 níveis
             val paddingX = 35f
 
             val baselineY = height - paddingBottom
@@ -148,7 +147,7 @@ fun NormalDistributionCanvas(
                     strokeWidth = 2f
                 )
 
-                // Rótulos do desvio padrão (Nível 1 de texto: logo abaixo da baseline)
+                // Nível 1: Rótulos de Desvio Padrão (logo abaixo do eixo)
                 val sdText = if (k > 0) "+${k}σ" else "${k}σ"
                 val sdMeasured = textMeasurer.measure(
                     text = sdText,
@@ -198,7 +197,7 @@ fun NormalDistributionCanvas(
                 color = primaryColor.copy(alpha = 0.22f)
             )
 
-            // 4. Contorno Principal do Sino
+            // 4. Contorno Principal da Curva de Gauss
             val curvePath = Path()
             val totalSteps = 120
             val totalStepSize = (maxX - minX) / totalSteps
@@ -228,7 +227,7 @@ fun NormalDistributionCanvas(
             drawCircle(color = secondaryColor, radius = 5f, center = Offset(meanCX, meanCY))
             drawCircle(color = Color.White, radius = 2f, center = Offset(meanCX, meanCY))
 
-            // Rótulo "μ" (Nível 2 de texto: desceu para baseline + 20f)
+            // Nível 2: Rótulo da Média (μ)
             val muText = "μ (${formatVal(mu)})"
             val muMeasured = textMeasurer.measure(
                 text = muText,
@@ -239,7 +238,7 @@ fun NormalDistributionCanvas(
                 topLeft = Offset(meanCX - muMeasured.size.width / 2f, baselineY + 20f)
             )
 
-            // 6. Linha(s) de Corte para os limites X (com Badge de Z-Score)
+            // 6. Linha(s) de Corte para os limites X
             fun drawCutoff(xVal: Double, label: String, textOffsetY: Float) {
                 if (xVal < minX || xVal > maxX) return
                 val cx = toCanvasX(xVal)
@@ -262,6 +261,7 @@ fun NormalDistributionCanvas(
 
                 val textX = (cx - infoMeasured.size.width / 2f).coerceIn(10f, width - infoMeasured.size.width - 10f)
 
+                // Nível 3: Rótulos de Corte X e Z-score
                 drawText(
                     textLayoutResult = infoMeasured,
                     topLeft = Offset(textX, baselineY + textOffsetY)
@@ -272,11 +272,10 @@ fun NormalDistributionCanvas(
                 drawCutoff(params.x1, "x1", 38f)
                 drawCutoff(params.x2, "x2", 38f)
             } else {
-                // Nível 3 de texto: desceu para baseline + 38f
                 drawCutoff(params.x1, "x", 38f)
             }
 
-            // 7. Badge de Resultado Flutuante (Canto Superior)
+            // 7. Badge de Resultado Flutuante no Topo
             val probPercent = params.calculatedProbability * 100
             val probStr = when (params.type) {
                 NormalProbabilityType.LESS_THAN -> "P(X ≤ ${formatVal(params.x1)}) = ${formatVal(probPercent)}%"
@@ -294,16 +293,14 @@ fun NormalDistributionCanvas(
             val badgeWidth = badgeMeasured.size.width + (badgePaddingHorizontal * 2)
             val badgeHeight = badgeMeasured.size.height + (badgePaddingVertical * 2)
             val badgeX = (width - badgeWidth) / 2f
-            val badgeY = 2f // Posicionado no topo do canvas, sem encostar na curva
+            val badgeY = 2f
 
-            // Fundo do Badge
             drawRoundRect(
                 color = primaryColor.copy(alpha = 0.12f),
                 topLeft = Offset(badgeX, badgeY),
                 size = Size(badgeWidth, badgeHeight),
                 cornerRadius = CornerRadius(8f, 8f)
             )
-            // Borda do Badge
             drawRoundRect(
                 color = primaryColor.copy(alpha = 0.4f),
                 topLeft = Offset(badgeX, badgeY),
@@ -311,7 +308,6 @@ fun NormalDistributionCanvas(
                 cornerRadius = CornerRadius(8f, 8f),
                 style = Stroke(width = 1f)
             )
-            // Texto do Badge
             drawText(
                 textLayoutResult = badgeMeasured,
                 topLeft = Offset(badgeX + badgePaddingHorizontal, badgeY + badgePaddingVertical)

@@ -1,32 +1,37 @@
 package com.miguel.statscalculator.presentation.inferential
 
-import com.miguel.statscalculator.core.math.AnovaResult
-import com.miguel.statscalculator.core.math.ConfidenceIntervalResult
-import com.miguel.statscalculator.core.math.HypothesisTestResult
+import com.miguel.statscalculator.util.AlternativeHypothesis
+import com.miguel.statscalculator.util.ConfidenceIntervalResult
+import com.miguel.statscalculator.util.HypothesisTestResult
 
-enum class InferentialTab {
-    CONFIDENCE_INTERVAL, HYPOTHESIS_TEST, ANOVA
+enum class InferentialParamType {
+    MEAN,       // Média Populacional (μ)
+    PROPORTION  // Proporção Populacional (p)
 }
 
-data class InferentialUiState(
-    val selectedTab: InferentialTab = InferentialTab.CONFIDENCE_INTERVAL,
+data class InferentialState(
+    // 0: Intervalo de Confiança, 1: Teste de Hipóteses
+    val mainTab: Int = 0,
 
-    // Inputs IC
-    val icDataText: String = "",
-    val icConfidenceLevelText: String = "0.95",
-    val icResult: ConfidenceIntervalResult? = null,
+    // --- ESTADO DO INTERVALO DE CONFIANÇA ---
+    val ciParamType: InferentialParamType = InferentialParamType.MEAN,
+    val ciEstimateText: String = "",          // x̅ ou p̂
+    val ciStdDevText: String = "",            // s
+    val ciSampleSizeText: String = "",        // n
+    val ciConfidenceLevelText: String = "95", // %
+    val ciResult: ConfidenceIntervalResult? = null,
+    val ciPointEstimateValue: Double = 0.0,
 
-    // Inputs Teste de Hipóteses
-    val testDataText: String = "",
-    val hypoMeanText: String = "0.0",
-    val alphaText: String = "0.05",
-    val testResult: HypothesisTestResult? = null,
+    // --- ESTADO DO TESTE DE HIPÓTESES ---
+    val htParamType: InferentialParamType = InferentialParamType.MEAN,
+    val htAlternative: AlternativeHypothesis = AlternativeHypothesis.TWO_SIDED,
+    val htNullValueText: String = "",         // μ0 ou p0 (Valor sob H0)
+    val htSampleEstimateText: String = "",   // x̅ ou p̂
+    val htStdDevText: String = "",           // s (apenas para Média)
+    val htSampleSizeText: String = "",       // n
+    val htAlphaText: String = "0.05",        // Nível de significância α
+    val htResult: HypothesisTestResult? = null,
 
-    // Inputs ANOVA
-    val anovaGroup1Text: String = "",
-    val anovaGroup2Text: String = "",
-    val anovaGroup3Text: String = "",
-    val anovaResult: AnovaResult? = null,
-
+    // --- MENSAGENS E ERROS ---
     val errorMessage: String? = null
 )

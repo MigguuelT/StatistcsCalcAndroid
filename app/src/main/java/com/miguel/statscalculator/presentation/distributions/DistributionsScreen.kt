@@ -21,8 +21,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.miguel.statscalculator.ui.components.KpiHeroCard
+import com.miguel.statscalculator.util.StatisticalUtils
 import java.util.Locale
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,11 +137,11 @@ private fun NormalSection() {
         calculatedZ1 = z1
 
         val prob = when (probType) {
-            NormalProbabilityType.LESS_THAN -> normalCdf(x1, mean, stdDev)
-            NormalProbabilityType.GREATER_THAN -> 1.0 - normalCdf(x1, mean, stdDev)
+            NormalProbabilityType.LESS_THAN -> StatisticalUtils.normalCdf(x1, mean, stdDev)
+            NormalProbabilityType.GREATER_THAN -> 1.0 - StatisticalUtils.normalCdf(x1, mean, stdDev)
             NormalProbabilityType.BETWEEN -> {
                 val x2Val = x2 ?: x1
-                abs(normalCdf(x2Val, mean, stdDev) - normalCdf(x1, mean, stdDev))
+                abs(StatisticalUtils.normalCdf(x2Val, mean, stdDev) - StatisticalUtils.normalCdf(x1, mean, stdDev))
             }
         }
 
@@ -153,7 +155,6 @@ private fun NormalSection() {
         )
     }
 
-    // Formulário de Entrada
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = meanText,
@@ -173,7 +174,6 @@ private fun NormalSection() {
         )
     }
 
-    // Seletor de Tipo de Probabilidade
     Text(text = "Tipo de Probabilidade Desejada:", style = MaterialTheme.typography.labelMedium)
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -199,7 +199,6 @@ private fun NormalSection() {
         )
     }
 
-    // Inputs para X1 e X2
     if (probType == NormalProbabilityType.BETWEEN) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
@@ -228,7 +227,6 @@ private fun NormalSection() {
         )
     }
 
-    // --- BOTÕES DE AÇÃO RÁPIDA (EXEMPLO / LIMPAR) ---
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -283,7 +281,6 @@ private fun NormalSection() {
         Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
     }
 
-    // Resultados (Renderiza apenas se calculado)
     canvasParams?.let { params ->
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             KpiHeroCard(
@@ -302,7 +299,6 @@ private fun NormalSection() {
             }
         }
 
-        // Gráfico Canvas
         NormalDistributionCanvas(params = params)
     }
 }
@@ -314,7 +310,7 @@ private fun NormalSection() {
 private fun PoissonSection() {
     var lambdaText by rememberSaveable { mutableStateOf("") }
     var kText by rememberSaveable { mutableStateOf("") }
-    var poissonType by rememberSaveable { mutableStateOf(0) } // 0: P(X=k), 1: P(X<=k), 2: P(X>=k)
+    var poissonType by rememberSaveable { mutableStateOf(0) }
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var calculatedProb by remember { mutableStateOf<Double?>(null) }
@@ -336,9 +332,9 @@ private fun PoissonSection() {
 
         lambdaVal = l
         calculatedProb = when (poissonType) {
-            0 -> poissonPmf(k, l)
-            1 -> poissonCdf(k, l)
-            else -> 1.0 - poissonCdf(k - 1, l)
+            0 -> StatisticalUtils.poissonPmf(k, l)
+            1 -> StatisticalUtils.poissonCdf(k, l)
+            else -> 1.0 - StatisticalUtils.poissonCdf(k - 1, l)
         }
     }
 
@@ -386,7 +382,6 @@ private fun PoissonSection() {
         )
     }
 
-    // --- BOTÕES DE AÇÃO RÁPIDA (EXEMPLO / LIMPAR) ---
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -464,7 +459,7 @@ private fun BinomialSection() {
     var nText by rememberSaveable { mutableStateOf("") }
     var pText by rememberSaveable { mutableStateOf("") }
     var kText by rememberSaveable { mutableStateOf("") }
-    var binomialType by rememberSaveable { mutableStateOf(0) } // 0: P(X=k), 1: P(X<=k), 2: P(X>=k)
+    var binomialType by rememberSaveable { mutableStateOf(0) }
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var calculatedProb by remember { mutableStateOf<Double?>(null) }
@@ -490,9 +485,9 @@ private fun BinomialSection() {
         varianceVal = n * p * (1.0 - p)
 
         calculatedProb = when (binomialType) {
-            0 -> binomialPmf(k, n, p)
-            1 -> binomialCdf(k, n, p)
-            else -> 1.0 - binomialCdf(k - 1, n, p)
+            0 -> StatisticalUtils.binomialPmf(k, n, p)
+            1 -> StatisticalUtils.binomialCdf(k, n, p)
+            else -> 1.0 - StatisticalUtils.binomialCdf(k - 1, n, p)
         }
     }
 
@@ -548,7 +543,6 @@ private fun BinomialSection() {
         )
     }
 
-    // --- BOTÕES DE AÇÃO RÁPIDA (EXEMPLO / LIMPAR) ---
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -625,7 +619,7 @@ private fun BinomialSection() {
 }
 
 // ==========================================
-// COMPONENTES AUXILIARES & CÁLCULOS
+// COMPONENTES AUXILIARES
 // ==========================================
 @Composable
 private fun PoissonDetailCard(lambda: Double, k: Int, prob: Double) {
@@ -689,68 +683,4 @@ private fun MetricRow(label: String, value: String) {
 
 private fun formatNum(value: Double): String {
     return String.format(Locale.US, "%.4f", value)
-}
-
-// --- FUNÇÕES MATEMÁTICAS ---
-private fun erf(x: Double): Double {
-    val a = 0.147
-    val x2 = x * x
-    val ax2 = a * x2
-    val inner = -x2 * (4.0 / Math.PI + ax2) / (1.0 + ax2)
-    val sign = if (x < 0) -1.0 else 1.0
-    return sign * sqrt(1.0 - exp(inner))
-}
-
-private fun normalCdf(x: Double, mean: Double, stdDev: Double): Double {
-    if (stdDev <= 0) return 0.0
-    val z = (x - mean) / (stdDev * sqrt(2.0))
-    return 0.5 * (1.0 + erf(z))
-}
-
-private fun factorial(n: Int): Double {
-    if (n <= 1) return 1.0
-    var res = 1.0
-    for (i in 2..n) res *= i
-    return res
-}
-
-private fun poissonPmf(k: Int, lambda: Double): Double {
-    if (k < 0 || lambda <= 0) return 0.0
-    return (lambda.pow(k) * exp(-lambda)) / factorial(k)
-}
-
-private fun poissonCdf(k: Int, lambda: Double): Double {
-    if (k < 0 || lambda <= 0) return 0.0
-    var sum = 0.0
-    for (i in 0..k) {
-        sum += poissonPmf(i, lambda)
-    }
-    return sum
-}
-
-private fun combination(n: Int, k: Int): Double {
-    if (k < 0 || k > n) return 0.0
-    if (k == 0 || k == n) return 1.0
-    var res = 1.0
-    val minK = if (k < n - k) k else n - k
-    for (i in 1..minK) {
-        res = res * (n - i + 1) / i
-    }
-    return res
-}
-
-private fun binomialPmf(k: Int, n: Int, p: Double): Double {
-    if (k < 0 || k > n || p < 0.0 || p > 1.0) return 0.0
-    val comb = combination(n, k)
-    return comb * p.pow(k) * (1.0 - p).pow(n - k)
-}
-
-private fun binomialCdf(k: Int, n: Int, p: Double): Double {
-    if (k < 0 || p < 0.0 || p > 1.0) return 0.0
-    var sum = 0.0
-    val maxK = minOf(k, n)
-    for (i in 0..maxK) {
-        sum += binomialPmf(i, n, p)
-    }
-    return sum
 }

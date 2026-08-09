@@ -74,4 +74,7 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
+
+    // Test Implementation
+    testImplementation("junit:junit:4.13.2")
 }
